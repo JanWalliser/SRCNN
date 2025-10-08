@@ -5,14 +5,12 @@ def mod_crop_size(w, h, scale):
     return (w - (w % scale), h - (h % scale))
 
 def process_one_image(img: Image.Image, scale: int):
-    # 1) RGB & mod-crop
     img = img.convert("RGB")
     w, h = img.size
     w_c, h_c = mod_crop_size(w, h, scale)
     if (w_c, h_c) != (w, h):
-        img = img.crop((0, 0, w_c, h_c))  # top-left mod-crop (reproduzierbar)
+        img = img.crop((0, 0, w_c, h_c))  
 
-    # 2) Downscale by factor s (bicubic), 3) Upscale back to cropped HR size (bicubic)
     lr = img.resize((w_c // scale, h_c // scale), Image.BICUBIC)
     lr_up = lr.resize((w_c, h_c), Image.BICUBIC)
     return lr_up
@@ -37,7 +35,6 @@ def create_low_res_folders(
             try:
                 with Image.open(in_path) as img:
                     lr_up = process_one_image(img, s)
-                    # PNG vermeidet mehrfache JPEG-Rekompression
                     lr_up.save(out_path, format=save_format)
             except Exception as e:
                 print(f"[x{s}] Error processing {name}: {e}")
