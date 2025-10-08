@@ -34,9 +34,6 @@ Training notes (summary):
 # Building blocks
 # -----------------------------
 class SEBlock(nn.Module):
-    """Squeeze-and-Excitation channel attention (lightweight).
-    Reduces channels by reduction ratio, applies sigmoid scaling.
-    """
     def __init__(self, channels: int, reduction: int = 16):
         super().__init__()
         hidden = max(4, channels // reduction)
@@ -55,9 +52,6 @@ class SEBlock(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    """Standard 3x3 residual block (no BN) with PReLU and optional SE attention.
-    residual_scaling helps stabilize deeper networks (e.g., 0.1).
-    """
     def __init__(self, channels: int, use_se: bool = False, residual_scaling: float = 0.1):
         super().__init__()
         self.residual_scaling = residual_scaling
@@ -95,23 +89,19 @@ class SRCNNBase(nn.Module):
         super().__init__()
         self.clamp_output = clamp_output
 
-        # Head: larger RF for context
         self.head = nn.Sequential(
             nn.Conv2d(3, channels, kernel_size=9, padding=4),
             nn.PReLU(num_parameters=channels),
         )
 
-        # Trunk: residual blocks, optional SE every se_period
         blocks = []
         for i in range(num_blocks):
             use_se = (se_period > 0) and ((i + 1) % se_period == 0)
             blocks.append(ResidualBlock(channels, use_se=use_se, residual_scaling=residual_scaling))
         self.trunk = nn.Sequential(*blocks)
 
-        # Tail: project back to RGB
         self.tail = nn.Conv2d(channels, 3, kernel_size=3, padding=1)
 
-        # Global skip (input -> output)
         self.global_skip = nn.Conv2d(3, 3, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -129,19 +119,16 @@ class SRCNNBase(nn.Module):
 # Model Variants
 # -----------------------------
 class SRCNN_low(SRCNNBase):
-    """Lightweight model: 4 residual blocks, no channel attention."""
     def __init__(self, clamp_output: bool = True):
         super().__init__(num_blocks=4, channels=64, se_period=0, residual_scaling=0.1, clamp_output=clamp_output)
 
 
 class SRCNN_medium(SRCNNBase):
-    """Medium model: 10 residual blocks, SE every 2 blocks."""
     def __init__(self, clamp_output: bool = True):
         super().__init__(num_blocks=10, channels=64, se_period=2, residual_scaling=0.1, clamp_output=clamp_output)
 
 
 class SRCNN_high(SRCNNBase):
-    """Deep model: 20 residual blocks, SE every 2 blocks."""
     def __init__(self, clamp_output: bool = True):
         super().__init__(num_blocks=20, channels=64, se_period=2, residual_scaling=0.1, clamp_output=clamp_output)
 
