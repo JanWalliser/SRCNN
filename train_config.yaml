@@ -1,0 +1,34 @@
+
+# train_config.yaml — Beispielkonfiguration für train_baseline.py
+# Nutze: python train_baseline.py --config train_config.yaml
+# CLI-Flags überschreiben diese Defaults.
+
+# Daten
+lr_train: "C:\\Users\\jandw\\SRCNN\\Data\\val\\low_res_x2"
+hr_train: "C:\\Users\\jandw\\SRCNN\\Data\\val\\high_res"
+lr_val:   "C:\\Users\\jandw\\SRCNN\\Data\\val\\low_res_x2"
+hr_val:   "C:\\Users\\jandw\\SRCNN\\Data\\val\\high_res"
+
+# Modell/Task
+variant: "low"         # low | medium | high
+scale: 2
+patch_hr: 192             # HR-Patchgröße
+
+# Training
+epochs: 10000
+batch_size: 48
+lr: 0.0001
+lr_min: 0.000005
+wd: 0.0
+cosine: true              # true -> CosineAnnealingLR, false -> MultiStepLR
+grad_clip: 1.0
+amp: true                 # Mixed Precision
+workers: 4
+val_every: 1
+
+# System/IO
+device: "auto"            # "auto", "cpu" oder "cuda:0"
+resume: ""
+out_dir: "checkpoints/low/x2"
+run_name: "srcnn_baseline"
+seed: 42
