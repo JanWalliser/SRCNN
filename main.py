@@ -1,26 +1,76 @@
-from srcnn_model import SRCNN
-from utils import load_model
-from PIL import Image
+import os
 import torch
-from torchvision.transforms import ToTensor, ToPILImage
+from PIL import Image
+from torchvision import transforms
+import matplotlib.pyplot as plt
 
+from srcnn_model import build_model
+from utils import infer_single_image, load_checkpoint, psnr
 
-def super_resolve_image(model, low_res_image_path, output_path):
-    model.eval()
-    transform = ToTensor()
-    image = Image.open(low_res_image_path).convert('RGB')
-    input_tensor = transform(image).unsqueeze(0).cuda()
-    with torch.no_grad():
-        output_tensor = model(input_tensor)
-    output_image = ToPILImage()(output_tensor.squeeze(0).cpu())
-    output_image.save(output_path)
+# --- Einstellungen ---
+model_variant   = "medium"   # 'low', 'medium', 'high'
+checkpoint_path = "checkpoints/medium/x3/srcnn_baseline_best.pt"
+input_path      = "../../Data/train/low_res_x2/1.png"      # LR (klein)
+highres_path    = "../../Data/train/high_res/1.jpg"       # HR (Ziel)
+output_path     = "results/1_med.png"
+device          = "cuda" if torch.cuda.is_available() else "cpu"
 
+# --- 1) Modell laden ---
+model = build_model(model_variant).to(device)
+_ = load_checkpoint(checkpoint_path, model, map_location=device)
+model.eval()
 
-if __name__ == "__main__":
-    model = SRCNN().cuda()
-    checkpoint_path = "checkpoints2/srcnn_epoch_365.pth"
-    load_model(model, checkpoint_path)
+# --- 2) Bild(e) laden ---
+to_tensor = transforms.ToTensor()
+to_pil    = transforms.ToPILImage()
 
-    low_res_image_path = "data/low_res/1.jpg"
-    output_path = "data/results/1.jpg"
-    super_resolve_image(model, low_res_image_path, output_path)
+lr_img = Image.open(input_path).convert("RGB")
+hr_img = Image.open(highres_path).convert("RGB")
+
+# --- 3) LR auf HR-Größe hochskalieren (wichtig für HR->HR-Refinement) ---
+#    Falls Größen nicht übereinstimmen, wird LR bikubisch auf HR-Größe gebracht.
+if lr_img.size != hr_img.size:
+    lr_up = lr_img.resize(hr_img.size, resample=Image.BICUBIC)
+else:
+    lr_up = lr_img  # bereits HR-Größe
+
+inp_tensor = to_tensor(lr_up)       # [C,H,W], in [0,1]
+hr_tensor  = to_tensor(hr_img)      # [C,H,W], in [0,1]
+
+# --- 4) Inferenz (ohne AMP, um NaNs/Underruns zu vermeiden) ---
+with torch.no_grad():
+    sr_tensor = infer_single_image(model, inp_tensor, device=device)  # gibt [C,H,W] in [0,1] zurück
+
+# --- 5) Sanity-Checks: Wertebereich & Größen ---
+print(f"SR stats -> min={sr_tensor.min().item():.6f}, max={sr_tensor.max().item():.6f}, "
+      f"nan={torch.isnan(sr_tensor).any().item()}")
+assert sr_tensor.shape == hr_tensor.shape, \
+    f"SR und HR haben unterschiedliche Shapes: {sr_tensor.shape} vs {hr_tensor.shape}"
+
+# --- 6) PSNR berechnen (auf [0,1]-Basis) ---
+val_psnr = psnr(sr_tensor, hr_tensor).item()
+print(f"PSNR (SR vs HR): {val_psnr:.2f} dB")
+
+# --- 7) Speichern & Anzeigen ---
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+sr_img = to_pil(sr_tensor.clamp(0,1))
+sr_img.save(output_path)
+
+plt.figure(figsize=(14,6))
+plt.subplot(1,3,1)
+plt.title("High-Resolution Target (Ground Truth)")
+plt.imshow(hr_img)
+plt.axis("off")
+
+plt.subplot(1,3,2)
+plt.title("Bicubic Upscaled (Model Input)")
+plt.imshow(lr_up)
+plt.axis("off")
+
+plt.subplot(1,3,3)
+plt.title(f"Super-Resolved Output\nPSNR={val_psnr:.2f} dB")
+plt.imshow(sr_img)
+plt.axis("off")
+
+plt.tight_layout()
+plt.show()

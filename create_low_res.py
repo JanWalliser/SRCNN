@@ -12,14 +12,13 @@ def process_one_image(img: Image.Image, scale: int):
         img = img.crop((0, 0, w_c, h_c))  
 
     lr = img.resize((w_c // scale, h_c // scale), Image.BICUBIC)
-    lr_up = lr.resize((w_c, h_c), Image.BICUBIC)
-    return lr_up
+    return lr
 
 def create_low_res_folders(
     high_res_dir: str,
     out_root: str,
     scale_factors=(2, 3, 4, 6),
-    save_format="PNG"
+    save_format="JPG"
 ):
     os.makedirs(out_root, exist_ok=True)
     names = [n for n in os.listdir(high_res_dir) if not n.startswith(".")]
@@ -41,8 +40,8 @@ def create_low_res_folders(
 
 if __name__ == "__main__":
     create_low_res_folders(
-        high_res_dir="data/high_res",
-        out_root="data",
+        high_res_dir="../../Data/val/high_res",
+        out_root="../../Data/val",
         scale_factors=(2, 3, 4, 6),
         save_format="PNG"
     )
