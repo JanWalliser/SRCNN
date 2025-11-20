@@ -1,0 +1,48 @@
+\begin{table}[t]
+  \centering
+  \caption{Latenz- und Durchsatz-Skalierung über Bildgrößen (CUDA, FP32).}
+  \label{tab:size_scaling_cuda_fp32}
+  \small
+  \begin{tabular}{l l l S[table-format=4.2] S[table-format=4.2]}
+    \toprule
+    \textbf{Arch} & \textbf{Scale} & \textbf{Größe (HxW)} & \textbf{Latenz [ms]} & \textbf{Throughput [MPix/s]} \\
+    \midrule
+    SRCNN-low & $x2$ & 256x256 & 2.4 & 27.31 \\
+    SRCNN-low & $x2$ & 512x512 & 14.85 & 17.65 \\
+    SRCNN-low & $x2$ & 1024x1024 & 59.68 & 17.57 \\
+    SRCNN-medium & $x2$ & 256x256 & 5.57 & 11.77 \\
+    SRCNN-medium & $x2$ & 512x512 & 33.41 & 7.84 \\
+    SRCNN-medium & $x2$ & 1024x1024 & 140.17 & 7.48 \\
+    SRCNN-high & $x2$ & 256x256 & 10.63 & 6.17 \\
+    SRCNN-high & $x2$ & 512x512 & 65.44 & 4.01 \\
+    SRCNN-high & $x2$ & 1024x1024 & 273.78 & 3.83 \\
+    SRCNN-low & $x3$ & 256x256 & 2.39 & 27.44 \\
+    SRCNN-low & $x3$ & 512x512 & 13.68 & 19.16 \\
+    SRCNN-low & $x3$ & 1024x1024 & 56.37 & 18.6 \\
+    SRCNN-medium & $x3$ & 256x256 & 5.48 & 11.95 \\
+    SRCNN-medium & $x3$ & 512x512 & 33.54 & 7.82 \\
+    SRCNN-medium & $x3$ & 1024x1024 & 140.17 & 7.48 \\
+    SRCNN-high & $x3$ & 256x256 & 10.64 & 6.16 \\
+    SRCNN-high & $x3$ & 512x512 & 65.44 & 4.01 \\
+    SRCNN-high & $x3$ & 1024x1024 & 273.86 & 3.83 \\
+    SRCNN-low & $x4$ & 256x256 & 2.38 & 27.56 \\
+    SRCNN-low & $x4$ & 512x512 & 13.68 & 19.16 \\
+    SRCNN-low & $x4$ & 1024x1024 & 56.75 & 18.48 \\
+    SRCNN-medium & $x4$ & 256x256 & 5.49 & 11.93 \\
+    SRCNN-medium & $x4$ & 512x512 & 33.58 & 7.81 \\
+    SRCNN-medium & $x4$ & 1024x1024 & 140.22 & 7.48 \\
+    SRCNN-high & $x4$ & 256x256 & 10.62 & 6.17 \\
+    SRCNN-high & $x4$ & 512x512 & 65.44 & 4.01 \\
+    SRCNN-high & $x4$ & 1024x1024 & 273.88 & 3.83 \\
+    SRCNN-low & $x6$ & 256x256 & 2.38 & 27.5 \\
+    SRCNN-low & $x6$ & 512x512 & 13.71 & 19.12 \\
+    SRCNN-low & $x6$ & 1024x1024 & 56.5 & 18.56 \\
+    SRCNN-medium & $x6$ & 256x256 & 5.49 & 11.95 \\
+    SRCNN-medium & $x6$ & 512x512 & 33.57 & 7.81 \\
+    SRCNN-medium & $x6$ & 1024x1024 & 140.24 & 7.48 \\
+    SRCNN-high & $x6$ & 256x256 & 10.63 & 6.16 \\
+    SRCNN-high & $x6$ & 512x512 & 65.46 & 4.0 \\
+    SRCNN-high & $x6$ & 1024x1024 & 273.85 & 3.83 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

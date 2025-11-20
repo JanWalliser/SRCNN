@@ -1,0 +1,31 @@
+\begin{table*}[t]
+  \centering
+  \setlength{\tabcolsep}{3pt}
+  \resizebox{\textwidth}{!}{%
+    \begin{tabular}{l l 
+                    S[table-format=3.2] S[table-format=4.0]  % lat gpu, lat cpu
+                    S[table-format=2.2]                      % speedup
+                    S[table-format=3.2] S[table-format=1.2]  % thr gpu, thr cpu
+                    S[table-format=2.2]                      % gain
+                    S[table-format=4.1]}                     % vram gpu
+      \toprule
+      \textbf{Arch} & \textbf{Scale} & \textbf{Latency GPU [ms]} & \textbf{Latency CPU [ms]} & \textbf{Speedup} & \textbf{MPix/s GPU} & \textbf{MPix/s CPU} & \textbf{Gain} & \textbf{VRAM GPU [MB]} \\
+      \midrule
+      SRCNN-high & $x2$ & 65.44 & 1688.36 & 25.8 & 4.01 & 0.16 & 25.85 & 334.8 \\
+      SRCNN-low & $x2$ & 14.85 & 362.06 & 24.38 & 17.65 & 0.72 & 24.38 & 330.2 \\
+      SRCNN-medium & $x2$ & 33.41 & 862.89 & 25.82 & 7.84 & 0.3 & 25.81 & 331.9 \\
+      SRCNN-high & $x3$ & 65.44 & 1691.47 & 25.85 & 4.01 & 0.16 & 25.85 & 334.8 \\
+      SRCNN-low & $x3$ & 13.68 & 363.66 & 26.58 & 19.16 & 0.72 & 26.57 & 330.2 \\
+      SRCNN-medium & $x3$ & 33.54 & 864.59 & 25.78 & 7.82 & 0.3 & 25.79 & 331.9 \\
+      SRCNN-high & $x4$ & 65.44 & 1687.88 & 25.79 & 4.01 & 0.16 & 25.85 & 334.8 \\
+      SRCNN-low & $x4$ & 13.68 & 363.8 & 26.59 & 19.16 & 0.72 & 26.57 & 330.2 \\
+      SRCNN-medium & $x4$ & 33.58 & 864.91 & 25.76 & 7.81 & 0.3 & 25.76 & 331.9 \\
+      SRCNN-high & $x6$ & 65.46 & 1695.07 & 25.9 & 4.0 & 0.16 & 25.84 & 334.8 \\
+      SRCNN-low & $x6$ & 13.71 & 365.09 & 26.63 & 19.12 & 0.72 & 26.63 & 330.2 \\
+      SRCNN-medium & $x6$ & 33.57 & 864.18 & 25.74 & 7.81 & 0.3 & 25.77 & 331.9 \\
+      \bottomrule
+    \end{tabular}%
+  }
+  \caption{CPU vs. GPU efficiency at $512\times512$ in FP32: mean latency and throughput per architecture/scale. Speedup $=$ CPU latency / GPU latency; Gain $=$ GPU throughput / CPU throughput.}
+  \label{tab:cpu_gpu_512}
+\end{table*}

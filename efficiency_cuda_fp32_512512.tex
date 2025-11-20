@@ -1,0 +1,24 @@
+\begin{table}[t]
+  \centering
+  \caption{Effizienzmetriken (CUDA, FP32; HxW=512x512).}
+  \label{tab:efficiency_cuda_fp32_512512}
+  \small
+  \begin{tabular}{l l S[table-format=2.3] S[table-format=3.3] S[table-format=3.2] S[table-format=3.2] S[table-format=3.2] S[table-format=4.1] S[table-format=4.1]}
+    \toprule
+    \textbf{Arch} & \textbf{Scale} & \textbf{Params [M]} & \textbf{FLOPs [GMAC]} & \textbf{Latenz [ms]} & \textbf{p90 [ms]} & \textbf{Throughput [MPix/s]} & \textbf{VRAM [MB]} & \textbf{Ckpt [MB]} \\
+    \midrule
+    SRCNN-low & $x2$ & 0.313 & 81.842 & 14.85 & 15.63 & 17.65 & 330.2 & 3.6 \\
+    SRCNN-medium & $x2$ & 0.76 & 197.806 & 33.41 & 33.45 & 7.84 & 331.9 & 8.8 \\
+    SRCNN-high & $x2$ & 1.502 & 391.079 & 65.44 & 65.5 & 4.01 & 334.8 & 17.4 \\
+    SRCNN-low & $x3$ & 0.313 & 81.842 & 13.68 & 13.74 & 19.16 & 330.2 & 3.6 \\
+    SRCNN-medium & $x3$ & 0.76 & 197.806 & 33.54 & 33.58 & 7.82 & 331.9 & nan \\
+    SRCNN-high & $x3$ & 1.502 & 391.079 & 65.44 & 65.51 & 4.01 & 334.8 & 17.4 \\
+    SRCNN-low & $x4$ & 0.313 & 81.842 & 13.68 & 13.75 & 19.16 & 330.2 & 3.6 \\
+    SRCNN-medium & $x4$ & 0.76 & 197.806 & 33.58 & 33.63 & 7.81 & 331.9 & 8.8 \\
+    SRCNN-high & $x4$ & 1.502 & 391.079 & 65.44 & 65.48 & 4.01 & 334.8 & 17.4 \\
+    SRCNN-low & $x6$ & 0.313 & 81.842 & 13.71 & 13.78 & 19.12 & 330.2 & 3.6 \\
+    SRCNN-medium & $x6$ & 0.76 & 197.806 & 33.57 & 33.63 & 7.81 & 331.9 & 8.8 \\
+    SRCNN-high & $x6$ & 1.502 & 391.079 & 65.46 & 65.51 & 4.0 & 334.8 & 17.4 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
