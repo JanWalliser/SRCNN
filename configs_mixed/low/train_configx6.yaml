@@ -1,0 +1,35 @@
+# Daten (gleich wie Baseline, solange scale & Pfade zusammenpassen)
+lr_train: "C:\\Users\\jandw\\SRCNN\\Data\\train\\low_res_x6"
+hr_train: "C:\\Users\\jandw\\SRCNN\\Data\\train\\high_res"
+lr_val:   "C:\\Users\\jandw\\SRCNN\\Data\\val\\low_res_x6"
+hr_val:   "C:\\Users\\jandw\\SRCNN\\Data\\val\\high_res"
+
+# Modell/Task
+variant: "low"       # low | medium | high
+scale: 6
+patch_hr: 192
+
+# Training (angepasst für VGG-Perceptual)
+epochs: 2500
+batch_size: 32     # deutlich kleiner wegen VGG19-Features (12–32 je nach VRAM)
+lr: 0.0001
+lr_min: 0.000005
+wd: 0.0
+cosine: true
+grad_clip: 1.0
+amp: true
+workers: 4
+val_every: 1         # engmaschige Val für visuelles Tuning
+
+# Perceptual-Loss-Optionen
+w_l1: 1.0            # Pixel-L1-Anteil
+w_perc: 0.10         # VGG-Perceptual-Anteil (0.05–0.2 sind gängig)
+w_tv: 0.0            # optional: z.B. 1e-6 bis 1e-4 gegen Rauschen/Ringing
+vgg_layers: [8, 17, 26]  # relu2_2, relu3_3, relu4_3
+use_y_psnr: true     # PSNR auf Luma (Y), wie üblich bei SR
+
+# System/IO
+resume: ""
+out_dir: "checkpoints/low/x6_perc"
+run_name: "srcnn_perceptual_low_x6"
+seed: 42

@@ -1,0 +1,44 @@
+# Adversarial (GAN) Training config
+trainer: gan   
+seed: 42
+variant: "low"        # "low" | "medium" | "high"
+scale: 6
+patch_hr: 192
+
+# Daten
+lr_train: "Data/train/low_res_x6"
+hr_train: "Data/train/high_res"
+lr_val:   "Data/val/low_res_x6"
+hr_val:   "Data/val/high_res"
+
+# Laufzeit
+batch_size: 32
+workers: 4
+epochs: 800
+amp: true
+grad_clip: 1.0
+val_every: 1
+
+# Optimizer / Scheduler
+lr_g: 1.0e-4
+lr_d: 1.0e-4
+wd_g: 0.0
+wd_d: 0.0
+cosine: true
+lr_min: 0.0
+
+# Verluste
+l1_weight: 1.0     # Content (L1)
+adv_weight: 0.005  # Adversarial Stärke (klein halten)
+use_y: false       # Y-Channel für Loss/PSNR? (false = RGB)
+
+# Discriminator
+disc_channels: 64
+
+# I/O
+out_dir: "checkpoints/low/x6_gan"
+run_name: "srcnn_gan_low_x6"
+
+# Resume (optional)
+# resume_g: "checkpoints/gan/x4/srcnn_gan_x4_G_latest.pt"
+# resume_d: "checkpoints/gan/x4/srcnn_gan_x4_D_latest.pt"
