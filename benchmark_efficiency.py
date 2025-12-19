@@ -1,30 +1,4 @@
 #!/usr/bin/env python3
-"""
-benchmark_efficiency.py
------------------------
-Measure model efficiency metrics for your SRCNN variants and save to CSV:
-- Parameter count (M)
-- Model size (MB) in memory and checkpoint size on disk (if provided)
-- Inference latency (ms): mean / p50 / p90 / p99
-- Throughput (MPix/s)
-- (GPU) Peak VRAM (MB)
-- Approx. FLOPs (GMAC) per forward (Conv2d-only) via runtime hooks
-
-Assumptions:
-- Your models are built via srcnn_model.build_model(name: str) with names: low|medium|high
-- Checkpoints are optional. If present, they live under: checkpoints/<arch>/<scale>/srcnn_baseline_best.pt (or *_latest.pt)
-- The network is HR->HR refinement; input & output have the same HxW.
-
-Usage examples:
-    python benchmark_efficiency.py --device cuda --sizes 256 512 768 1024
-    python benchmark_efficiency.py --device cuda --precision fp16 --sizes 512 --repeat 200
-    python benchmark_efficiency.py --device cpu  --sizes 256 512 --repeat 50
-    # If checkpoints elsewhere:
-    python benchmark_efficiency.py --ckpt_root C:/path/to/checkpoints
-
-Outputs:
-    results/efficiency_metrics.csv
-"""
 import os, time, math, statistics, argparse
 from pathlib import Path
 import torch
@@ -32,7 +6,6 @@ from torch import nn
 from typing import Dict, List, Tuple, Optional
 
 from srcnn_model import build_model  # expects your project file
-# Optional: if you want to override model names, edit MODEL_NAMES below.
 
 MODEL_NAMES = ["low", "medium", "high"]
 SCALES = ["x2", "x3", "x4", "x6"]
@@ -47,21 +20,54 @@ def sizeof_state_dict_mb(sd: Dict[str, torch.Tensor]) -> float:
             total_bytes += t.numel() * t.element_size()
     return total_bytes / (1024 * 1024)
 
-def find_checkpoint(ckpt_root: Path, arch: str, scale: str) -> Optional[Path]:
-    cand = [
-        ckpt_root / arch / scale / "srcnn_baseline_best.pt",
-        ckpt_root / arch / scale / "srcnn_baseline_latest.pt",
-    ]
-    for p in cand:
+def find_checkpoint(ckpt_root: Path, arch: str, scale_dir: str, scale: str, variant: str) -> Optional[Path]:
+    """
+    Sucht den passenden Checkpoint im Ordner ckpt_root/arch/scale_dir.
+
+    - variant == "l1":
+        erwartet z.B. srcnn_baseline_best.pt (wie bisher) oder irgendein *.pt
+    - variant == "perc":
+        erwartet z.B. srcnn_perceptual_high_x2_best.pt
+    - variant == "gan":
+        erwartet z.B. srcnn_gan_high_x2_G_best.pt
+    """
+    folder = ckpt_root / arch / scale_dir
+
+    candidates = []
+
+    if variant == "l1":
+        # Deine bisherigen Baseline-Namen
+        candidates += [
+            folder / "srcnn_baseline_best.pt",
+            folder / "srcnn_baseline_latest.pt",
+        ]
+    elif variant == "perc":
+        # z.B. srcnn_perceptual_high_x2_best.pt
+        candidates += [
+            folder / f"srcnn_perceptual_{arch}_{scale}_best.pt",
+            folder / f"srcnn_perceptual_{arch}_{scale}_latest.pt",
+        ]
+    elif variant == "gan":
+        # z.B. srcnn_gan_high_x2_G_best.pt
+        candidates += [
+            folder / f"srcnn_gan_{arch}_{scale}_G_best.pt",
+            folder / f"srcnn_gan_{arch}_{scale}_best.pt",
+            folder / f"srcnn_gan_{arch}_{scale}_latest.pt",
+        ]
+
+    # Zuerst die expliziten Kandidaten prüfen
+    for p in candidates:
         if p.exists():
             return p
-    # fallback: any *.pt in folder
-    folder = ckpt_root / arch / scale
+
+    # Fallback: irgendeine *.pt in diesem Ordner (z.B. wenn du anders benannt hast)
     if folder.exists():
         pts = sorted(folder.glob("*.pt"))
         if pts:
             return pts[-1]
+
     return None
+
 
 # ---- FLOPs (GMAC) via forward hooks (Conv2d only) ----
 class ConvFlopCounter:
@@ -70,11 +76,8 @@ class ConvFlopCounter:
         self.handles: List[torch.utils.hooks.RemovableHandle] = []
 
     def _hook(self, module: nn.Module, inp, out):
-        # Count MACs for Conv2d: Cout * Hout * Wout * (Cin/groups * Kh * Kw)
         if not isinstance(module, nn.Conv2d):
             return
-        # Input shape: (B, Cin, Hin, Win); Output: (B, Cout, Hout, Wout)
-        # We use output tensor to get Hout, Wout, Cout, and module to get kernel and Cin/groups
         try:
             out_t: torch.Tensor = out if isinstance(out, torch.Tensor) else out[0]
             B, Cout, Hout, Wout = out_t.shape
@@ -93,28 +96,43 @@ class ConvFlopCounter:
 
     def clear(self):
         for h in self.handles:
-            try: h.remove()
-            except Exception: pass
+            try:
+                h.remove()
+            except Exception:
+                pass
         self.handles.clear()
 
 def percentile(vals: List[float], p: float) -> float:
-    if not vals: return float("nan")
+    if not vals:
+        return float("nan")
     vals_sorted = sorted(vals)
-    k = (len(vals_sorted)-1) * (p/100.0)
+    k = (len(vals_sorted) - 1) * (p / 100.0)
     f = math.floor(k); c = math.ceil(k)
-    if f == c: return vals_sorted[int(k)]
-    return vals_sorted[f] * (c-k) + vals_sorted[c] * (k-f)
+    if f == c:
+        return vals_sorted[int(k)]
+    return vals_sorted[f] * (c - k) + vals_sorted[c] * (k - f)
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu", choices=["cpu","cuda"], help="Device for benchmarking.")
-    ap.add_argument("--precision", default="fp32", choices=["fp32","fp16","bf16"], help="Inference precision.")
-    ap.add_argument("--sizes", nargs="+", type=int, default=[256, 512], help="Square HR sizes (HxW).")
+    ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu",
+                    choices=["cpu","cuda"], help="Device for benchmarking.")
+    ap.add_argument("--precision", default="fp32", choices=["fp32","fp16","bf16"],
+                    help="Inference precision.")
+    ap.add_argument("--sizes", nargs="+", type=int, default=[512],
+                    help="Square HR sizes (HxW).")
     ap.add_argument("--repeat", type=int, default=100, help="Number of timed iterations.")
     ap.add_argument("--warmup", type=int, default=20, help="Warmup iterations (not timed).")
     ap.add_argument("--batch", type=int, default=1, help="Batch size.")
-    ap.add_argument("--ckpt_root", type=str, default="checkpoints", help="Root folder of checkpoints.")
-    ap.add_argument("--out_csv", type=str, default="results/efficiency_metrics.csv", help="Output CSV path.")
+    ap.add_argument("--ckpt_root", type=str, default="checkpoints",
+                    help="Root folder of checkpoints.")
+    ap.add_argument("--out_csv", type=str, default="results/efficiency_metrics.csv",
+                    help="Output CSV path.")
+
+    # NEU: welche Loss-Variante (nur für Checkpoint-Suche / Ckpt-Size)
+    ap.add_argument("--variant", type=str, default="l1",
+                    choices=["l1", "perc", "gan"],
+                    help="Loss variant: l1 (baseline), perc, gan.")
+
     args = ap.parse_args()
 
     device = torch.device(args.device)
@@ -128,13 +146,30 @@ def main():
 
     for arch in MODEL_NAMES:
         for scale in SCALES:
-            # Build model
+            # Ordnername für den Checkpoint:
+            #   L1:   x2, x3, x4, x6
+            #   Perc: x2_perc, x3_perc, ...
+            #   GAN:  x2_gan,  x3_gan,  ...
+            if args.variant == "l1":
+                scale_dir = scale
+            elif args.variant == "perc":
+                scale_dir = f"{scale}_perc"
+            else:  # gan
+                scale_dir = f"{scale}_gan"
+
+            # Build model (Architektur ist unabhängig von der Loss-Variante)
             model = build_model(arch)
             model.eval().to(device)
 
-            # Load checkpoint if exists
+            # Checkpoint laden (falls vorhanden)
             ckpt = None
-            ckpt_path = find_checkpoint(Path(args.ckpt_root), arch, scale)
+            ckpt_path = find_checkpoint(
+                Path(args.ckpt_root),
+                arch=arch,
+                scale_dir=scale_dir,
+                scale=scale,
+                variant=args.variant,
+            )
             ckpt_size_mb = None
             if ckpt_path is not None and ckpt_path.exists():
                 try:
@@ -149,7 +184,6 @@ def main():
 
             # Basic stats
             params = count_params(model)
-            # size in memory (parameters only)
             try:
                 state = model.state_dict()
                 model_size_mb = sizeof_state_dict_mb(state)
@@ -160,17 +194,22 @@ def main():
                 H = W = size
                 x = torch.rand(args.batch, 3, H, W, device=device)
 
-                # Autocast dtype
-                amp_dtype = torch.float16 if prec=="fp16" else (torch.bfloat16 if prec=="bf16" else torch.float32)
+                amp_dtype = (
+                    torch.float16 if prec == "fp16"
+                    else torch.bfloat16 if prec == "bf16"
+                    else torch.float32
+                )
 
                 # Warmup
                 with torch.inference_mode():
                     for _ in range(args.warmup):
-                        if device.type == "cuda": torch.cuda.synchronize()
+                        if device.type == "cuda":
+                            torch.cuda.synchronize()
                         ctx = torch.autocast(device_type="cuda", dtype=amp_dtype) if use_autocast else torch.cuda.amp.autocast(enabled=False)
                         with ctx:
-                            y = model(x)
-                        if device.type == "cuda": torch.cuda.synchronize()
+                            _ = model(x)
+                        if device.type == "cuda":
+                            torch.cuda.synchronize()
 
                 # FLOPs single pass via hooks
                 flop_counter = ConvFlopCounter()
@@ -207,7 +246,7 @@ def main():
                 lat_p50  = percentile(lat_ms, 50)
                 lat_p90  = percentile(lat_ms, 90)
                 lat_p99  = percentile(lat_ms, 99)
-                # throughput in megapixels/s
+
                 pix_per_iter = args.batch * H * W
                 thr_mpix_s = (pix_per_iter / 1e6) / (lat_mean / 1000.0) if lat_mean > 0 else float("nan")
 
@@ -217,7 +256,8 @@ def main():
 
                 rows.append({
                     "arch": arch,
-                    "scale": scale,
+                    "scale": scale,               # logisch x2/x3/... (nicht scale_dir)
+                    "variant": args.variant,      # NEU: L1 / perc / gan
                     "size_hw": f"{H}x{W}",
                     "device": device.type,
                     "precision": prec,
@@ -235,7 +275,6 @@ def main():
                     "VRAM_peak_MB": round(vram_mb, 1) if vram_mb==vram_mb else "",
                 })
 
-            # cleanup to free VRAM between models
             del model
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -244,7 +283,7 @@ def main():
     import csv
     out_csv.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(rows[0].keys()) if rows else [
-        "arch","scale","size_hw","device","precision","batch",
+        "arch","scale","variant","size_hw","device","precision","batch",
         "params_M","model_size_MB","ckpt_path","ckpt_size_MB",
         "FLOPs_GMAC","lat_mean_ms","lat_p50_ms","lat_p90_ms","lat_p99_ms",
         "throughput_MPix_s","VRAM_peak_MB"

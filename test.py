@@ -1,26 +1,33 @@
-# infer_main.py (neu anlegen)
 import torch
 from PIL import Image
 from torchvision.transforms.functional import to_tensor, to_pil_image
-from srcnn_model import build_model
-from utils import load_checkpoint, infer_single_image, bicubic_up_by_factor
+
+from utils import infer_single_image, bicubic_up_by_factor
+from utils import load_sr_model   # oder direkt aus infer_main importiert
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# 1) Modell laden
-model = build_model("high").to(device).eval()
-load_checkpoint("checkpoints/high/x3/srcnn_baseline_best.pt", model, map_location=device)
+def main():
+    scale = 3
+    arch  = "perc"   # "base", "perc" oder "gan" 
+    variant = "high" # "low", "medium", "high"
 
-# 2) Eingabebild laden (z. B. 300x200)
-img = Image.open("../../Data/val/low_res_x3/1121.png").convert("RGB")
-lr = to_tensor(img).unsqueeze(0).to(device)     # [1,3,H,W]
+    # 1) Modell entsprechend arch/variant/scale laden
+    model = load_sr_model(arch=arch, variant=variant, scale=scale, device=device)
 
-# 3) Bicubic Upscale per Faktor (kein size=(...))
-s = 3  # z.B. x3
-lr_up = bicubic_up_by_factor(lr, s)             # [1,3,H*s,W*s]
+    # 2) LR-Bild laden
+    img = Image.open("fabrik.jpg").convert("RGB")
+    lr = to_tensor(img).unsqueeze(0).to(device)  # [1,3,H,W]
 
-# 4) Refinement (mit/ohne Tiling)
-sr = infer_single_image(model, lr_up.squeeze(0), device=device, tile=None)
+    # 3) Bicubic Upscale
+    lr_up = bicubic_up_by_factor(lr, scale)
 
-# 5) Speichern (PNG)
-to_pil_image(sr).save("Test3.png")
+    # 4) SR-Inferenz
+    sr = infer_single_image(model, lr_up.squeeze(0), device=device, tile=None)
+
+    # 5) Speichern
+    out = to_pil_image(sr.cpu())
+    out.save(f"Fabrik_sr_x{scale}_{arch}.png")
+
+if __name__ == "__main__":
+    main()

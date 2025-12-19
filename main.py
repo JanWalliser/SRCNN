@@ -8,11 +8,11 @@ from srcnn_model import build_model
 from utils import infer_single_image, load_checkpoint, psnr
 
 # --- Einstellungen ---
-model_variant   = "medium"   # 'low', 'medium', 'high'
-checkpoint_path = "checkpoints/medium/x3/srcnn_baseline_best.pt"
-input_path      = "../../Data/train/low_res_x2/1.png"      # LR (klein)
+model_variant   = "high"   # 'low', 'medium', 'high'
+checkpoint_path = "checkpoints/high/x3/srcnn_baseline_best.pt"
+input_path      = "results/Sara.jpg"      # LR (klein)
 highres_path    = "../../Data/train/high_res/1.jpg"       # HR (Ziel)
-output_path     = "results/1_med.png"
+output_path     = "results/Sara_high.png"
 device          = "cuda" if torch.cuda.is_available() else "cpu"
 
 # --- 1) Modell laden ---
@@ -56,21 +56,3 @@ os.makedirs(os.path.dirname(output_path), exist_ok=True)
 sr_img = to_pil(sr_tensor.clamp(0,1))
 sr_img.save(output_path)
 
-plt.figure(figsize=(14,6))
-plt.subplot(1,3,1)
-plt.title("High-Resolution Target (Ground Truth)")
-plt.imshow(hr_img)
-plt.axis("off")
-
-plt.subplot(1,3,2)
-plt.title("Bicubic Upscaled (Model Input)")
-plt.imshow(lr_up)
-plt.axis("off")
-
-plt.subplot(1,3,3)
-plt.title(f"Super-Resolved Output\nPSNR={val_psnr:.2f} dB")
-plt.imshow(sr_img)
-plt.axis("off")
-
-plt.tight_layout()
-plt.show()
